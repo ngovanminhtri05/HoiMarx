@@ -67,7 +67,7 @@ function RagSourcePanel({ chunks, texts }) {
           {texts.map((t, i) => (
             <div key={i} className="rag-source-chunk">
               <span className="rag-chunk-num">#{i + 1}</span>
-              <p className="rag-chunk-text">{t}{t.length === 300 ? "…" : ""}</p>
+              <p className="rag-chunk-text">{t}</p>
             </div>
           ))}
           <div className="rag-source-note">

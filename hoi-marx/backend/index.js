@@ -47,6 +47,41 @@ Bắt đầu bằng lời chào ngắn, thân thiện và hỏi người dùng m
 app.use(cors());
 app.use(express.json());
 
+// Extract a clean, sentence-aligned excerpt from a KB chunk.
+// Problem: PDF→TXT conversion often breaks chunks mid-sentence at para boundaries.
+// Fix: (1) skip a leading sentence fragment, (2) end at the last sentence boundary.
+function makeChunkPreview(text, maxChars = 480) {
+  let excerpt = text.trim();
+
+  // Step 1 — skip leading fragment if the chunk starts mid-sentence.
+  // Heuristic: if there's a sentence-end marker within the first 120 chars
+  // and the very first token looks like a fragment (no uppercase start AND
+  // the fragment is short, e.g. "quát," or "nghĩa,"), trim it.
+  const earlyEnd = excerpt.search(/[.!?]\s+/);
+  if (earlyEnd > 0 && earlyEnd < 120) {
+    const fragment = excerpt.slice(0, earlyEnd).trim();
+    const wordCount = fragment.split(/\s+/).length;
+    // Treat as fragment if ≤ 6 words (clearly a tail of a previous sentence)
+    if (wordCount <= 6) {
+      excerpt = excerpt.slice(earlyEnd).replace(/^[.!?]\s*/, "").trim();
+    }
+  }
+
+  // Step 2 — trim to maxChars at a sentence boundary.
+  if (excerpt.length <= maxChars) return excerpt;
+  const slice = excerpt.slice(0, maxChars);
+  const lastBoundary = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf(".\n"),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? "),
+  );
+  if (lastBoundary > maxChars * 0.4) {
+    return slice.slice(0, lastBoundary + 1).trim();
+  }
+  return slice.trim() + "…";
+}
+
 function buildSystemPrompt(kbChunks) {
   if (!kbChunks.length) return SYSTEM_PROMPT;
   const context = kbChunks.join("\n\n---\n\n");
@@ -81,7 +116,7 @@ app.post("/api/chat", async (req, res) => {
 
     // Tell the frontend how many KB chunks were injected (+ preview text for source panel)
     if (kbChunks.length > 0) {
-      const previews = kbChunks.map((t) => t.slice(0, 300).trim());
+      const previews = kbChunks.map((t) => makeChunkPreview(t));
       res.write(`event: rag_context\ndata: ${JSON.stringify({ chunks: kbChunks.length, texts: previews })}\n\n`);
     }
 
