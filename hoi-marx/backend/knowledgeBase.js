@@ -78,8 +78,11 @@ function buildIndex(rawChunks) {
 }
 
 // Bigram match = 4pts, exact unigram = 2pts, partial = 1pt
-function scoreChunk({ tokenSet, bigramSet }, queryTokens, queryBigrams) {
+// + head bonus: term in first 200 chars (chunk is about this topic) = +3
+// + definition bonus: "X là" pattern when query asks "là gì" / "định nghĩa" = +4
+function scoreChunk({ text, tokenSet, bigramSet }, queryTokens, queryBigrams, isDefinitionQuery) {
   let score = 0;
+
   for (const qb of queryBigrams) {
     if (bigramSet.has(qb)) score += 4;
   }
@@ -92,6 +95,29 @@ function scoreChunk({ tokenSet, bigramSet }, queryTokens, queryBigrams) {
       }
     }
   }
+
+  // Head bonus: if key terms appear in the opening 200 chars the chunk is ON this topic
+  const head = text.slice(0, 200).toLowerCase();
+  for (const qt of queryTokens) {
+    if (head.includes(qt)) score += 3;
+  }
+  for (const qb of queryBigrams) {
+    if (head.includes(qb.replace("§", " "))) score += 3;
+  }
+
+  // Definition bonus: when user asks "X là gì" / "định nghĩa X", reward chunks
+  // that contain the pattern "X là " (likely a definitional sentence)
+  if (isDefinitionQuery) {
+    const textLower = text.toLowerCase();
+    for (const qt of queryTokens) {
+      if (textLower.includes(`${qt} là `)) score += 4;
+    }
+    for (const qb of queryBigrams) {
+      const phrase = qb.replace("§", " ");
+      if (textLower.includes(`${phrase} là `)) score += 6;
+    }
+  }
+
   return score;
 }
 
@@ -127,14 +153,19 @@ export async function loadKB() {
   console.log("[KB] Không tìm thấy giáo trình — RAG tắt");
 }
 
+const DEFINITION_TRIGGERS = ["là gì", "định nghĩa", "khái niệm", "ý nghĩa", "bản chất", "hiểu như thế nào", "giải thích"];
+
 export function searchKB(query, topK = 4) {
   if (!loaded || !chunkData.length) return [];
   const queryTokens = tokenize(query);
   if (!queryTokens.length) return [];
   const queryBigrams = getBigrams(queryTokens);
 
+  const queryLower = query.toLowerCase();
+  const isDefinitionQuery = DEFINITION_TRIGGERS.some((t) => queryLower.includes(t));
+
   return chunkData
-    .map((cd) => ({ cd, score: scoreChunk(cd, queryTokens, queryBigrams) }))
+    .map((cd) => ({ cd, score: scoreChunk(cd, queryTokens, queryBigrams, isDefinitionQuery) }))
     .filter((c) => c.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
