@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hoi-marx-backend
+    runtime: node
+    rootDir: hoi-marx/backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false        # bạn tự điền trong Render dashboard
+      - key: PORT
+        value: 3001
+    autoDeploy: true
