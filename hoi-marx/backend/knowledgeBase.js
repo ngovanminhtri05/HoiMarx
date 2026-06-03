@@ -155,8 +155,29 @@ export async function loadKB() {
 
 const DEFINITION_TRIGGERS = ["là gì", "định nghĩa", "khái niệm", "ý nghĩa", "bản chất", "hiểu như thế nào", "giải thích"];
 const ENUMERATION_TRIGGERS = ["mấy", "bao nhiêu", "có những", "liệt kê", "kể tên", "những loại", "các loại", "những gì", "gồm những", "bao gồm"];
-// Vietnamese number words to inject when query asks "how many"
-const NUMBER_SYNONYMS = ["một", "hai", "ba", "bốn", "năm", "hai nguồn", "ba nguồn", "hai nguyên nhân", "ba nguyên nhân", "hai điều kiện"];
+
+// Vietnamese synonym pairs — when query uses word A, also search for word B.
+// This bridges the gap between student phrasing and textbook phrasing.
+const SYNONYMS = [
+  ["xuất hiện", "hình thành"],
+  ["xuất hiện", "ra đời"],
+  ["nguồn gốc", "nguyên nhân"],
+  ["nguồn gốc", "cơ sở"],
+  ["đặc điểm", "đặc trưng"],
+  ["vai trò", "chức năng"],
+  ["ý nghĩa", "tầm quan trọng"],
+  ["tác động", "ảnh hưởng"],
+  ["phát triển", "tiến bộ"],
+];
+
+function expandWithSynonyms(query) {
+  let expanded = query;
+  for (const [a, b] of SYNONYMS) {
+    if (query.toLowerCase().includes(a)) expanded += ` ${b}`;
+    if (query.toLowerCase().includes(b)) expanded += ` ${a}`;
+  }
+  return expanded;
+}
 
 export function searchKB(query, topK = 5) {
   if (!loaded || !chunkData.length) return [];
@@ -165,15 +186,13 @@ export function searchKB(query, topK = 5) {
   const isDefinitionQuery = DEFINITION_TRIGGERS.some((t) => queryLower.includes(t));
   const isEnumerationQuery = ENUMERATION_TRIGGERS.some((t) => queryLower.includes(t));
 
-  // For enumeration queries ("mấy nguồn gốc"), expand query with number synonyms
-  // so we find chunks that say "có hai nguồn gốc" even when query says "mấy"
-  let expandedQuery = query;
+  // Expand query with synonyms and number words
+  let expandedQuery = expandWithSynonyms(query);
   if (isEnumerationQuery) {
-    // strip the trigger words, keep the topic words
     const topic = queryLower
       .replace(/có mấy|mấy|bao nhiêu|liệt kê|kể tên|có những|gồm những/g, "")
       .trim();
-    expandedQuery = `${query} một hai ba bốn ${topic}`;
+    expandedQuery += ` một hai ba bốn ${topic}`;
   }
 
   const queryTokens = tokenize(expandedQuery);
