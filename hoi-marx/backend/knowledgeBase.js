@@ -154,15 +154,31 @@ export async function loadKB() {
 }
 
 const DEFINITION_TRIGGERS = ["là gì", "định nghĩa", "khái niệm", "ý nghĩa", "bản chất", "hiểu như thế nào", "giải thích"];
+const ENUMERATION_TRIGGERS = ["mấy", "bao nhiêu", "có những", "liệt kê", "kể tên", "những loại", "các loại", "những gì", "gồm những", "bao gồm"];
+// Vietnamese number words to inject when query asks "how many"
+const NUMBER_SYNONYMS = ["một", "hai", "ba", "bốn", "năm", "hai nguồn", "ba nguồn", "hai nguyên nhân", "ba nguyên nhân", "hai điều kiện"];
 
-export function searchKB(query, topK = 4) {
+export function searchKB(query, topK = 5) {
   if (!loaded || !chunkData.length) return [];
-  const queryTokens = tokenize(query);
+  const queryLower = query.toLowerCase();
+
+  const isDefinitionQuery = DEFINITION_TRIGGERS.some((t) => queryLower.includes(t));
+  const isEnumerationQuery = ENUMERATION_TRIGGERS.some((t) => queryLower.includes(t));
+
+  // For enumeration queries ("mấy nguồn gốc"), expand query with number synonyms
+  // so we find chunks that say "có hai nguồn gốc" even when query says "mấy"
+  let expandedQuery = query;
+  if (isEnumerationQuery) {
+    // strip the trigger words, keep the topic words
+    const topic = queryLower
+      .replace(/có mấy|mấy|bao nhiêu|liệt kê|kể tên|có những|gồm những/g, "")
+      .trim();
+    expandedQuery = `${query} một hai ba bốn ${topic}`;
+  }
+
+  const queryTokens = tokenize(expandedQuery);
   if (!queryTokens.length) return [];
   const queryBigrams = getBigrams(queryTokens);
-
-  const queryLower = query.toLowerCase();
-  const isDefinitionQuery = DEFINITION_TRIGGERS.some((t) => queryLower.includes(t));
 
   return chunkData
     .map((cd) => ({ cd, score: scoreChunk(cd, queryTokens, queryBigrams, isDefinitionQuery) }))
