@@ -92,6 +92,18 @@ function ChatPage({ onNewQuestion }) {
                     );
                   }
                 } catch {}
+              } else if (currentEvent === "error") {
+                try {
+                  const parsed = JSON.parse(line.slice(6));
+                  const msg = parsed?.error ?? "Lỗi không xác định từ AI.";
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === botMsgId
+                        ? { ...m, content: `❌ ${msg}` }
+                        : m
+                    )
+                  );
+                } catch {}
               }
               currentEvent = "";
             }
