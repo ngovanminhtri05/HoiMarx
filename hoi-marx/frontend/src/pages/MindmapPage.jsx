@@ -183,6 +183,7 @@ export default function MindmapPage() {
   const [zoom, setZoom] = useState(1);
   const [selectedNode, setSelectedNode] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobileFullscreen, setIsMobileFullscreen] = useState(false);
   const pageRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -194,6 +195,16 @@ export default function MindmapPage() {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
+  useEffect(() => {
+    if (!isMobileFullscreen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileFullscreen]);
 
   const toggle = useCallback((id) => {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -219,20 +230,28 @@ export default function MindmapPage() {
 
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement === pageRef.current) {
+      if (isMobileFullscreen) {
+        setIsMobileFullscreen(false);
+      } else if (document.fullscreenElement === pageRef.current) {
         await document.exitFullscreen();
       } else {
-        await pageRef.current?.requestFullscreen();
+        if (pageRef.current?.requestFullscreen) {
+          await pageRef.current.requestFullscreen();
+        } else {
+          setIsMobileFullscreen(true);
+        }
       }
     } catch {
+      setIsMobileFullscreen((value) => !value);
       setIsFullscreen(document.fullscreenElement === pageRef.current);
     }
   };
 
-  const FullscreenIcon = isFullscreen ? Minimize2 : Maximize2;
+  const isExpandedView = isFullscreen || isMobileFullscreen;
+  const FullscreenIcon = isExpandedView ? Minimize2 : Maximize2;
 
   return (
-    <div className="mm-page" ref={pageRef}>
+    <div className={`mm-page ${isMobileFullscreen ? "mm-page--fullscreen" : ""}`} ref={pageRef}>
       <div className="mm-toolbar">
         <div className="mm-toolbar-left">
           <p className="page-kicker">Bản đồ khái niệm</p>
@@ -257,11 +276,11 @@ export default function MindmapPage() {
           <button
             className="mm-btn"
             onClick={toggleFullscreen}
-            title={isFullscreen ? "Thoát toàn màn hình Mindmap" : "Xem Mindmap toàn màn hình"}
+            title={isExpandedView ? "Thoát toàn màn hình Mindmap" : "Xem Mindmap toàn màn hình"}
             type="button"
           >
             <FullscreenIcon size={16} strokeWidth={2.2} />
-            {isFullscreen ? "Thoát" : "Toàn màn hình"}
+            {isExpandedView ? "Thoát" : "Toàn màn hình"}
           </button>
           <span className="mm-zoom-label">{Math.round(zoom * 100)}%</span>
         </div>
