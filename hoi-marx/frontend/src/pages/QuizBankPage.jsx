@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { CheckCircle2, RotateCcw, Shuffle, XCircle } from "lucide-react";
 import { questions, SECTIONS } from "../data/questions.js";
 
 function shuffle(arr) {
@@ -11,36 +12,43 @@ function shuffle(arr) {
 }
 
 export default function QuizBankPage({ dynamicQuestions = [] }) {
-  const [section, setSection]   = useState("all");
+  const [section, setSection] = useState("all");
   const [localQueue, setLocalQueue] = useState(() => shuffle([...dynamicQuestions, ...questions]));
-  const [idx, setIdx]           = useState(0);
-  const [chosen, setChosen]     = useState(null);
-  const [score, setScore]       = useState({ correct: 0, total: 0 });
-  const [showExp, setShowExp]   = useState(false);
+  const [idx, setIdx] = useState(0);
+  const [chosen, setChosen] = useState(null);
+  const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [showExp, setShowExp] = useState(false);
 
-  // Include "Từ Chat" filter only if there are dynamic questions
   const computedSections = useMemo(() => {
     if (!dynamicQuestions.length) return SECTIONS;
-    return [
-      SECTIONS[0],
-      { id: "dynamic", label: "🤖 Từ Chat" },
-      ...SECTIONS.slice(1),
-    ];
+    return [SECTIONS[0], { id: "dynamic", label: "Từ chat" }, ...SECTIONS.slice(1)];
   }, [dynamicQuestions.length]);
 
-  const getPool = useCallback((s) => {
-    if (s === "all")     return [...dynamicQuestions, ...questions];
-    if (s === "dynamic") return dynamicQuestions;
-    return questions.filter((q) => q.section === s);
-  }, [dynamicQuestions]);
+  const getPool = useCallback(
+    (s) => {
+      if (s === "all") return [...dynamicQuestions, ...questions];
+      if (s === "dynamic") return dynamicQuestions;
+      return questions.filter((q) => q.section === s);
+    },
+    [dynamicQuestions]
+  );
 
-  const handleSection = useCallback((s) => {
-    setSection(s);
-    setLocalQueue(shuffle(getPool(s)));
-    setIdx(0);
-    setChosen(null);
-    setShowExp(false);
-  }, [getPool]);
+  const handleSection = useCallback(
+    (s) => {
+      setSection(s);
+      setLocalQueue(shuffle(getPool(s)));
+      setIdx(0);
+      setChosen(null);
+      setShowExp(false);
+    },
+    [getPool]
+  );
+
+  const activeQueue = localQueue.length ? localQueue : shuffle(getPool("all"));
+  const q = activeQueue[idx % activeQueue.length];
+  const position = (idx % activeQueue.length) + 1;
+  const total = activeQueue.length;
+  const isDynamic = String(q?.id ?? "").startsWith("dyn-");
 
   const handleChoose = (i) => {
     if (chosen !== null) return;
@@ -65,27 +73,22 @@ export default function QuizBankPage({ dynamicQuestions = [] }) {
     setShowExp(false);
   };
 
-  const activeQueue = localQueue.length ? localQueue : shuffle(getPool("all"));
-  const q = activeQueue[idx % activeQueue.length];
-  const position = (idx % activeQueue.length) + 1;
-  const total = activeQueue.length;
-  const isDynamic = String(q?.id ?? "").startsWith("dyn-");
-
   if (!q) return null;
 
   return (
     <div className="qb-page">
-      {/* Header */}
-      <div className="qb-header">
-        <div className="qb-header-top">
-          <div>
-            <h2 className="qb-title">BỘ ĐỀ ÔN THI</h2>
-            <p className="qb-subtitle">MLN111 · {total} câu · {score.correct}/{score.total} đúng</p>
-          </div>
-          <button className="qb-shuffle-btn" onClick={handleShuffle} title="Xáo bài">
-            ⇄ Xáo
-          </button>
+      <div className="page-header qb-header">
+        <div className="page-heading">
+          <p className="page-kicker">Luyện trắc nghiệm</p>
+          <h2 className="page-title">Bộ đề ôn thi</h2>
+          <p className="page-subtitle">
+            {total} câu trong bộ hiện tại, đã đúng {score.correct}/{score.total || 0}
+          </p>
         </div>
+        <button className="icon-text-btn qb-shuffle-btn" onClick={handleShuffle} title="Xáo bộ câu hỏi">
+          <Shuffle size={17} strokeWidth={2.2} />
+          Xáo câu
+        </button>
 
         <div className="qb-progress-wrap" aria-label={`Câu ${position} / ${total}`}>
           <div className="qb-progress-fill" style={{ width: `${(position / total) * 100}%` }} />
@@ -104,13 +107,12 @@ export default function QuizBankPage({ dynamicQuestions = [] }) {
         </div>
       </div>
 
-      {/* Question card */}
       <div className="qb-body">
-        <div className="qb-card" key={`${q.id}-${idx}`}>
+        <article className="qb-card" key={`${q.id}-${idx}`}>
           <div className="qb-meta">
             <span className="qb-num">Câu {position}/{total}</span>
             <span className="qb-topic">{q.topic}</span>
-            {isDynamic && <span className="qb-dynamic-badge">🤖 Từ chat</span>}
+            {isDynamic && <span className="qb-dynamic-badge">Từ chat</span>}
             <span className="qb-source">{q.source}</span>
           </div>
 
@@ -136,21 +138,31 @@ export default function QuizBankPage({ dynamicQuestions = [] }) {
 
           {showExp && (
             <div className="qb-explanation">
-              <div className="qb-exp-rule" />
               <p className="qb-exp-verdict">
-                {chosen === q.answer ? "✓ Chính xác!" : `✗ Đáp án đúng: ${String.fromCharCode(65 + q.answer)}`}
+                {chosen === q.answer ? (
+                  <>
+                    <CheckCircle2 size={18} strokeWidth={2.2} />
+                    Chính xác
+                  </>
+                ) : (
+                  <>
+                    <XCircle size={18} strokeWidth={2.2} />
+                    Đáp án đúng: {String.fromCharCode(65 + q.answer)}
+                  </>
+                )}
               </p>
               <p className="qb-exp-text">{q.explanation}</p>
-              <p className="qb-exp-source">📚 {q.source}</p>
+              <p className="qb-exp-source">{q.source}</p>
             </div>
           )}
-        </div>
+        </article>
       </div>
 
       {chosen !== null && (
         <div className="qb-footer">
           <button className="qb-next-btn" onClick={handleNext}>
-            Câu tiếp theo →
+            <RotateCcw size={17} strokeWidth={2.2} />
+            Câu tiếp theo
           </button>
         </div>
       )}

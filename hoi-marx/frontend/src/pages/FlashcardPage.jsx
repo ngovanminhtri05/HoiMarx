@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
+import { ArrowLeft, ArrowRight, Check, RotateCw, Undo2 } from "lucide-react";
 import { mindmapData } from "../data/mindmapData.js";
 
-// Flatten mindmap tree into flat card array
 function flattenMindmap(node) {
   const cards = [];
   if (node.def) {
@@ -23,34 +23,41 @@ function flattenMindmap(node) {
 const ALL_CARDS = flattenMindmap(mindmapData);
 
 const FILTERS = [
-  { id: "all",      label: "Tất cả" },
-  { id: "study",    label: "Đang học" },
+  { id: "all", label: "Tất cả" },
+  { id: "study", label: "Đang học" },
   { id: "mastered", label: "Đã thuộc" },
 ];
 
 export default function FlashcardPage() {
   const [mastered, setMastered] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem("hm-mastered") ?? "[]")); }
-    catch { return new Set(); }
+    try {
+      return new Set(JSON.parse(localStorage.getItem("hm-mastered") ?? "[]"));
+    } catch {
+      return new Set();
+    }
   });
-  const [filter,  setFilter]  = useState("all");
-  const [idx,     setIdx]     = useState(0);
+  const [filter, setFilter] = useState("all");
+  const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
   const cards = useMemo(() => {
     if (filter === "mastered") return ALL_CARDS.filter((c) => mastered.has(c.id));
-    if (filter === "study")    return ALL_CARDS.filter((c) => !mastered.has(c.id));
+    if (filter === "study") return ALL_CARDS.filter((c) => !mastered.has(c.id));
     return ALL_CARDS;
   }, [filter, mastered]);
 
-  const total    = cards.length;
-  const safeIdx  = total ? idx % total : 0;
-  const card     = cards[safeIdx] ?? null;
+  const total = cards.length;
+  const safeIdx = total ? idx % total : 0;
+  const card = cards[safeIdx] ?? null;
   const position = total ? safeIdx + 1 : 0;
   const isMastered = card ? mastered.has(card.id) : false;
 
-  const handleFilter = (f) => { setFilter(f); setIdx(0); setFlipped(false); };
-  const handleFlip   = ()  => setFlipped((p) => !p);
+  const handleFilter = (f) => {
+    setFilter(f);
+    setIdx(0);
+    setFlipped(false);
+  };
+  const handleFlip = () => setFlipped((p) => !p);
 
   const go = (dir) => {
     setIdx((p) => {
@@ -61,31 +68,33 @@ export default function FlashcardPage() {
     setFlipped(false);
   };
 
-  const handleMark = useCallback((mark) => {
-    if (!card) return;
-    setMastered((prev) => {
-      const next = new Set(prev);
-      mark ? next.add(card.id) : next.delete(card.id);
-      localStorage.setItem("hm-mastered", JSON.stringify([...next]));
-      return next;
-    });
-    setIdx((p) => p + 1);
-    setFlipped(false);
-  }, [card]);
+  const handleMark = useCallback(
+    (mark) => {
+      if (!card) return;
+      setMastered((prev) => {
+        const next = new Set(prev);
+        mark ? next.add(card.id) : next.delete(card.id);
+        localStorage.setItem("hm-mastered", JSON.stringify([...next]));
+        return next;
+      });
+      setIdx((p) => p + 1);
+      setFlipped(false);
+    },
+    [card]
+  );
 
   return (
     <div className="fc-page">
-      {/* Header */}
-      <div className="fc-header">
-        <div>
-          <h2 className="fc-title">THẺ HỌC TẬP</h2>
-          <p className="fc-subtitle">
-            MLN111 · {mastered.size}/{ALL_CARDS.length} đã thuộc
+      <div className="page-header fc-header">
+        <div className="page-heading">
+          <p className="page-kicker">Ghi nhớ khái niệm</p>
+          <h2 className="page-title">Thẻ học tập</h2>
+          <p className="page-subtitle">
+            Đã thuộc {mastered.size}/{ALL_CARDS.length} thẻ trong mindmap
           </p>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="fc-filters">
         {FILTERS.map((f) => (
           <button
@@ -104,34 +113,31 @@ export default function FlashcardPage() {
         ))}
       </div>
 
-      {/* Progress bar */}
       {total > 0 && (
         <div className="fc-progress-row">
           <span className="fc-progress-label">{position}/{total}</span>
           <div className="fc-progress-bar">
-            <div
-              className="fc-progress-fill"
-              style={{ width: `${(position / total) * 100}%` }}
-            />
+            <div className="fc-progress-fill" style={{ width: `${(position / total) * 100}%` }} />
           </div>
         </div>
       )}
 
-      {/* Card or empty state */}
       {!card ? (
         <div className="fc-empty">
           {filter === "mastered"
-            ? "Chưa có thẻ nào được đánh dấu đã thuộc."
-            : "Bạn đã thuộc hết tất cả thẻ! 🎉"}
+            ? "Bạn chưa đánh dấu thẻ nào là đã thuộc."
+            : "Bạn đã thuộc hết các thẻ trong bộ hiện tại."}
         </div>
       ) : (
         <>
-          <div className="fc-scene" onClick={handleFlip}>
+          <button className="fc-scene" onClick={handleFlip} type="button" aria-label="Lật thẻ">
             <div className={`fc-card ${flipped ? "fc-card--flipped" : ""}`}>
-              {/* Front — term */}
               <div className="fc-face fc-front" style={{ background: card.color }}>
                 {isMastered && (
-                  <span className="fc-mastered-ribbon">✓ Đã thuộc</span>
+                  <span className="fc-mastered-ribbon">
+                    <Check size={14} strokeWidth={2.2} />
+                    Đã thuộc
+                  </span>
                 )}
                 {card.sublabel && (
                   <div className="fc-front-sub" style={{ color: card.textColor }}>
@@ -142,47 +148,43 @@ export default function FlashcardPage() {
                   {card.label}
                 </div>
                 <div className="fc-flip-hint" style={{ color: card.textColor }}>
-                  nhấn để xem định nghĩa
+                  Nhấn để xem định nghĩa
                 </div>
               </div>
 
-              {/* Back — definition */}
               <div className="fc-face fc-back">
                 <div className="fc-back-term">{card.label}</div>
                 <p className="fc-back-def">{card.def}</p>
               </div>
             </div>
-          </div>
+          </button>
 
-          {/* Action row */}
-          <div className="fc-actions">
-            <button className="fc-nav-btn" onClick={() => go(-1)} title="Trước">←</button>
+          <div className={`fc-actions ${flipped ? "fc-actions--flipped" : ""}`}>
+            <button className="fc-nav-btn" onClick={() => go(-1)} title="Thẻ trước">
+              <ArrowLeft size={19} strokeWidth={2.2} />
+            </button>
 
             {flipped ? (
               <>
-                <button
-                  className="fc-action-btn fc-action-btn--study"
-                  onClick={() => handleMark(false)}
-                >
-                  ↩ Cần ôn
+                <button className="fc-action-btn fc-action-btn--study" onClick={() => handleMark(false)}>
+                  <Undo2 size={17} strokeWidth={2.2} />
+                  Cần ôn
                 </button>
-                <button
-                  className="fc-action-btn fc-action-btn--master"
-                  onClick={() => handleMark(true)}
-                >
-                  ✓ Đã thuộc
+                <button className="fc-action-btn fc-action-btn--master" onClick={() => handleMark(true)}>
+                  <Check size={17} strokeWidth={2.2} />
+                  Đã thuộc
                 </button>
               </>
             ) : (
-              <button
-                className="fc-action-btn fc-action-btn--flip"
-                onClick={handleFlip}
-              >
+              <button className="fc-action-btn fc-action-btn--flip" onClick={handleFlip}>
+                <RotateCw size={17} strokeWidth={2.2} />
                 Xem định nghĩa
               </button>
             )}
 
-            <button className="fc-nav-btn" onClick={() => go(1)} title="Tiếp">→</button>
+            <button className="fc-nav-btn" onClick={() => go(1)} title="Thẻ tiếp theo">
+              <ArrowRight size={19} strokeWidth={2.2} />
+            </button>
           </div>
         </>
       )}

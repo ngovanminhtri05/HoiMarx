@@ -1,15 +1,14 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import { Maximize2, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { mindmapData } from "../data/mindmapData.js";
 
-// ── Layout constants ──────────────────────────────────────
-const SLOT_H   = 56;
-const LEVEL_W  = 230;
-const NODE_W   = [180, 168, 195, 172, 152];
-const NODE_H   = [48,  42,  40,  36,  32 ];
-const PAD_L    = 24;
-const PAD_T    = 40;
+const SLOT_H = 56;
+const LEVEL_W = 230;
+const NODE_W = [180, 168, 195, 172, 152];
+const NODE_H = [48, 42, 40, 36, 32];
+const PAD_L = 24;
+const PAD_T = 40;
 
-// ── Tree layout engine ────────────────────────────────────
 function countLeaves(node, collapsed) {
   if (!node.children?.length || collapsed[node.id]) return 1;
   return node.children.reduce((s, c) => s + countLeaves(c, collapsed), 0);
@@ -56,7 +55,6 @@ function svgDims(nodes) {
   return { w: maxX, h: maxY };
 }
 
-// ── Bezier edge ───────────────────────────────────────────
 function Edge({ from, to }) {
   const x1 = from.x + from.nw;
   const y1 = from.y + from.nh / 2;
@@ -74,12 +72,11 @@ function Edge({ from, to }) {
   );
 }
 
-// ── Node rect ─────────────────────────────────────────────
 function Node({ node, onSelect, onToggle, collapsed, selectedId }) {
   const isCollapsible = node.children?.length > 0;
   const isCollapsed = collapsed[node.id];
   const isSelected = node.id === selectedId;
-  const rx = node.depth === 0 ? 0 : 3;
+  const rx = node.depth === 0 ? 12 : 10;
   const fontSize = node.depth === 0 ? 11 : node.depth === 1 ? 10.5 : 9.5;
   const subFontSize = fontSize - 1;
 
@@ -91,26 +88,22 @@ function Node({ node, onSelect, onToggle, collapsed, selectedId }) {
       role="button"
       aria-pressed={isSelected}
     >
-      {/* Shadow */}
-      <rect x={2} y={2} width={node.nw} height={node.nh} rx={rx} ry={rx} fill="rgba(0,0,0,0.18)" />
-      {/* Fill */}
+      <rect x={2} y={3} width={node.nw} height={node.nh} rx={rx} ry={rx} fill="rgba(23,33,43,0.14)" />
       <rect width={node.nw} height={node.nh} rx={rx} ry={rx} fill={node.color} />
-      {/* Selection ring */}
       {isSelected && (
         <rect
-          x={-2} y={-2}
-          width={node.nw + 4} height={node.nh + 4}
-          rx={rx + 2} ry={rx + 2}
+          x={-3}
+          y={-3}
+          width={node.nw + 6}
+          height={node.nh + 6}
+          rx={rx + 3}
+          ry={rx + 3}
           fill="none"
-          stroke="rgba(255,255,255,0.9)"
+          stroke="#B4232A"
           strokeWidth={2}
         />
       )}
-      {/* Left accent for depth ≥ 3 */}
-      {node.depth >= 3 && (
-        <rect width={3} height={node.nh} rx={0} fill="rgba(255,255,255,0.35)" />
-      )}
-      {/* Label */}
+      {node.depth >= 3 && <rect width={3} height={node.nh} rx={3} fill="rgba(255,255,255,0.35)" />}
       <text
         x={node.depth === 0 ? node.nw / 2 : 10}
         y={node.sublabel ? node.nh / 2 - 3 : node.nh / 2 + fontSize * 0.35}
@@ -118,9 +111,8 @@ function Node({ node, onSelect, onToggle, collapsed, selectedId }) {
         dominantBaseline={node.sublabel ? "auto" : "middle"}
         fill={node.textColor || "#fff"}
         fontSize={fontSize}
-        fontFamily="'Barlow Condensed', Arial Narrow, sans-serif"
+        fontFamily="'Outfit', Arial, sans-serif"
         fontWeight={node.depth <= 1 ? 700 : 600}
-        letterSpacing={node.depth === 0 ? "0.12em" : "0.03em"}
       >
         {node.label}
       </text>
@@ -131,32 +123,34 @@ function Node({ node, onSelect, onToggle, collapsed, selectedId }) {
           textAnchor={node.depth === 0 ? "middle" : "start"}
           dominantBaseline="hanging"
           fill={node.textColor || "#fff"}
-          fillOpacity={0.7}
+          fillOpacity={0.76}
           fontSize={subFontSize}
-          fontFamily="'Crimson Pro', Georgia, serif"
-          fontStyle="italic"
+          fontFamily="'Outfit', Arial, sans-serif"
         >
           {node.sublabel}
         </text>
       )}
-      {/* Expand/collapse — separate click area, stops propagation */}
       {isCollapsible && (
         <g
-          onClick={(e) => { e.stopPropagation(); onToggle(node.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(node.id);
+          }}
           style={{ cursor: "pointer" }}
         >
-          <rect x={node.nw - 20} y={0} width={20} height={node.nh} fill="transparent" />
+          <rect x={node.nw - 22} y={0} width={22} height={node.nh} fill="transparent" />
           <text
-            x={node.nw - 10}
+            x={node.nw - 11}
             y={node.nh / 2}
             textAnchor="middle"
             dominantBaseline="middle"
             fill={node.textColor || "#fff"}
-            fillOpacity={0.75}
-            fontSize={9}
-            fontFamily="monospace"
+            fillOpacity={0.82}
+            fontSize={12}
+            fontFamily="Consolas, monospace"
+            fontWeight={700}
           >
-            {isCollapsed ? "+" : "−"}
+            {isCollapsed ? "+" : "-"}
           </text>
         </g>
       )}
@@ -164,31 +158,31 @@ function Node({ node, onSelect, onToggle, collapsed, selectedId }) {
   );
 }
 
-// ── Definition panel ──────────────────────────────────────
 function DefinitionPanel({ node, onClose }) {
   if (!node) return null;
   return (
     <div className="mm-def-panel">
-      <div className="mm-def-header" style={{ borderLeftColor: node.color }}>
+      <div className="mm-def-header">
         <div className="mm-def-header-text">
           <span className="mm-def-title">{node.label}</span>
           {node.sublabel && <span className="mm-def-sub">{node.sublabel}</span>}
         </div>
-        <button className="mm-def-close" onClick={onClose} aria-label="Đóng">✕</button>
+        <button className="mm-def-close" onClick={onClose} aria-label="Đóng">
+          <X size={16} strokeWidth={2.2} />
+        </button>
       </div>
-      <p className="mm-def-body">{node.def ?? "—"}</p>
+      <p className="mm-def-body">{node.def ?? "Chưa có định nghĩa cho mục này."}</p>
     </div>
   );
 }
 
-// ── Main component ────────────────────────────────────────
 const INITIAL_COLLAPSED = { "triet-2-1": true, "triet-2-2": true, "triet-2-3": true };
 
 export default function MindmapPage() {
-  const [collapsed, setCollapsed]       = useState(INITIAL_COLLAPSED);
-  const [zoom, setZoom]                 = useState(1);
+  const [collapsed, setCollapsed] = useState(INITIAL_COLLAPSED);
+  const [zoom, setZoom] = useState(1);
   const [selectedNode, setSelectedNode] = useState(null);
-  const containerRef                    = useRef(null);
+  const containerRef = useRef(null);
 
   const toggle = useCallback((id) => {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -198,36 +192,47 @@ export default function MindmapPage() {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
   }, []);
 
-  const layout  = useMemo(() => layoutNode(mindmapData, 0, 0, collapsed), [collapsed]);
-  const nodes   = useMemo(() => flatNodes(layout), [layout]);
-  const edges   = useMemo(() => flatEdges(layout), [layout]);
+  const layout = useMemo(() => layoutNode(mindmapData, 0, 0, collapsed), [collapsed]);
+  const nodes = useMemo(() => flatNodes(layout), [layout]);
+  const edges = useMemo(() => flatEdges(layout), [layout]);
   const { w, h } = useMemo(() => svgDims(nodes), [nodes]);
 
-  const expandAll  = () => setCollapsed({});
+  const expandAll = () => setCollapsed({});
   const collapseAll = () => {
     const c = {};
-    nodes.forEach((n) => { if (n.children?.length) c[n.id] = true; });
+    nodes.forEach((n) => {
+      if (n.children?.length) c[n.id] = true;
+    });
     setCollapsed(c);
   };
 
   return (
     <div className="mm-page">
-      {/* Toolbar */}
       <div className="mm-toolbar">
         <div className="mm-toolbar-left">
-          <h2 className="mm-title">SƠ ĐỒ TƯ DUY</h2>
-          <p className="mm-subtitle">Giáo trình MLN111 · Bấm node để xem định nghĩa · ＋/− để mở/đóng</p>
+          <p className="page-kicker">Bản đồ khái niệm</p>
+          <h2 className="mm-title">Sơ đồ tư duy</h2>
+          <p className="mm-subtitle">Bấm vào node để xem định nghĩa, dùng thu gọn để ôn theo từng cụm.</p>
         </div>
         <div className="mm-toolbar-right">
-          <button className="mm-btn" onClick={expandAll}>Mở tất cả</button>
-          <button className="mm-btn" onClick={collapseAll}>Thu gọn</button>
-          <button className="mm-btn" onClick={() => setZoom((z) => Math.min(2, z + 0.15))} title="Phóng to">＋</button>
-          <button className="mm-btn" onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))} title="Thu nhỏ">－</button>
+          <button className="mm-btn" onClick={expandAll}>
+            <Maximize2 size={16} strokeWidth={2.2} />
+            Mở tất cả
+          </button>
+          <button className="mm-btn" onClick={collapseAll}>
+            <Minus size={16} strokeWidth={2.2} />
+            Thu gọn
+          </button>
+          <button className="mm-btn mm-icon-btn" onClick={() => setZoom((z) => Math.min(2, z + 0.15))} title="Phóng to">
+            <ZoomIn size={17} strokeWidth={2.2} />
+          </button>
+          <button className="mm-btn mm-icon-btn" onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))} title="Thu nhỏ">
+            <ZoomOut size={17} strokeWidth={2.2} />
+          </button>
           <span className="mm-zoom-label">{Math.round(zoom * 100)}%</span>
         </div>
       </div>
 
-      {/* Legend */}
       <div className="mm-legend">
         {[
           { color: "#1e3a6e", label: "Triết học" },
@@ -241,18 +246,18 @@ export default function MindmapPage() {
         ))}
       </div>
 
-      {/* Definition panel */}
       <DefinitionPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
 
-      {/* Canvas */}
       <div className="mm-canvas-wrap" ref={containerRef}>
         <div
           className="mm-canvas-inner"
           style={{ transform: `scale(${zoom})`, transformOrigin: "top left", width: w, height: h }}
         >
-          <svg width={w} height={h} style={{ display: "block" }}>
+          <svg width={w} height={h} style={{ display: "block" }} aria-label="Sơ đồ tư duy MLN111">
             <g className="mm-edges">
-              {edges.map((e, i) => <Edge key={i} from={e.from} to={e.to} />)}
+              {edges.map((e, i) => (
+                <Edge key={i} from={e.from} to={e.to} />
+              ))}
             </g>
             <g className="mm-nodes">
               {nodes.map((n) => (
