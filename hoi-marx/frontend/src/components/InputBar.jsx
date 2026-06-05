@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { SendHorizontal } from "lucide-react";
 
 export default function InputBar({ input, setInput, onSend, isStreaming }) {
   const textareaRef = useRef(null);
@@ -7,7 +8,7 @@ export default function InputBar({ input, setInput, onSend, isStreaming }) {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 130) + "px";
+    ta.style.height = `${Math.min(ta.scrollHeight, 132)}px`;
   }, [input]);
 
   const handleKeyDown = (e) => {
@@ -20,7 +21,7 @@ export default function InputBar({ input, setInput, onSend, isStreaming }) {
   const canSend = input.trim().length > 0 && !isStreaming;
 
   return (
-    <div className="input-bar">
+    <form className="input-bar" onSubmit={(e) => e.preventDefault()}>
       <textarea
         ref={textareaRef}
         className="input-textarea"
@@ -28,7 +29,7 @@ export default function InputBar({ input, setInput, onSend, isStreaming }) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Hỏi về Marx-Lenin... hoặc gõ 'quiz' để ôn thi"
+        placeholder="Hỏi về Marx-Lenin, một khái niệm khó hiểu, hoặc gõ 'quiz' để ôn thi"
         disabled={isStreaming}
         aria-label="Nhập câu hỏi"
       />
@@ -36,14 +37,12 @@ export default function InputBar({ input, setInput, onSend, isStreaming }) {
         className="send-btn"
         onClick={() => onSend(input)}
         disabled={!canSend}
-        aria-label="Gửi"
-        title="Gửi (Enter)"
+        aria-label="Gửi câu hỏi"
+        title="Gửi bằng Enter"
+        type="button"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13" />
-          <polygon points="22 2 15 22 11 13 2 9 22 2" />
-        </svg>
+        <SendHorizontal size={21} strokeWidth={2.3} />
       </button>
-    </div>
+    </form>
   );
 }

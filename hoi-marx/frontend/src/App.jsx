@@ -14,7 +14,7 @@ function ChatPage({ onNewQuestion }) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const finalContentRef = useRef("");
-  const lastUserMsgRef  = useRef("");
+  const lastUserMsgRef = useRef("");
 
   const sendMessage = useCallback(
     async (userInput) => {
@@ -25,7 +25,7 @@ function ChatPage({ onNewQuestion }) {
       setMessages(newMessages);
       setInput("");
       setIsStreaming(true);
-      lastUserMsgRef.current  = userInput.trim();
+      lastUserMsgRef.current = userInput.trim();
       finalContentRef.current = "";
 
       const botMsgId = Date.now() + 1;
@@ -70,14 +70,12 @@ function ChatPage({ onNewQuestion }) {
                     finalContentRef.current += text;
                     setMessages((prev) =>
                       prev.map((m) =>
-                        m.id === botMsgId
-                          ? { ...m, content: m.content + text }
-                          : m
+                        m.id === botMsgId ? { ...m, content: m.content + text } : m
                       )
                     );
                   }
                 } catch {
-                  // malformed SSE chunk, skip
+                  // Ignore malformed SSE chunks.
                 }
               } else if (currentEvent === "rag_context") {
                 try {
@@ -91,19 +89,21 @@ function ChatPage({ onNewQuestion }) {
                       )
                     );
                   }
-                } catch {}
+                } catch {
+                  // Ignore malformed RAG metadata.
+                }
               } else if (currentEvent === "error") {
                 try {
                   const parsed = JSON.parse(line.slice(6));
-                  const msg = parsed?.error ?? "Lỗi không xác định từ AI.";
+                  const msg = parsed?.error ?? "AI chưa trả lời được câu này.";
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === botMsgId
-                        ? { ...m, content: `❌ ${msg}` }
-                        : m
+                      m.id === botMsgId ? { ...m, content: `Lỗi: ${msg}` } : m
                     )
                   );
-                } catch {}
+                } catch {
+                  // Ignore malformed error payloads.
+                }
               }
               currentEvent = "";
             }
@@ -113,13 +113,15 @@ function ChatPage({ onNewQuestion }) {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === botMsgId
-              ? { ...m, content: `❌ Lỗi kết nối: ${err.message}. Vui lòng thử lại.` }
+              ? {
+                  ...m,
+                  content: `Lỗi kết nối: ${err.message}. Kiểm tra backend rồi thử lại.`,
+                }
               : m
           )
         );
       } finally {
         setIsStreaming(false);
-        // Auto-generate quiz question in background (silent fail)
         if (finalContentRef.current && onNewQuestion) {
           fetch(`${API_URL}/api/generate-quiz`, {
             method: "POST",
@@ -130,7 +132,9 @@ function ChatPage({ onNewQuestion }) {
             }),
           })
             .then((r) => r.json())
-            .then(({ quiz }) => { if (quiz?.q) onNewQuestion(quiz); })
+            .then(({ quiz }) => {
+              if (quiz?.q) onNewQuestion(quiz);
+            })
             .catch(() => {});
         }
       }
@@ -139,7 +143,9 @@ function ChatPage({ onNewQuestion }) {
   );
 
   const handleQuickAction = useCallback(
-    (text) => { if (!isStreaming) sendMessage(text); },
+    (text) => {
+      if (!isStreaming) sendMessage(text);
+    },
     [sendMessage, isStreaming]
   );
 
@@ -161,8 +167,11 @@ export default function App() {
   const [page, setPage] = useState("chat");
 
   const [dynamicQuestions, setDynamicQuestions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("hm-dq") ?? "[]"); }
-    catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem("hm-dq") ?? "[]");
+    } catch {
+      return [];
+    }
   });
 
   const addDynamicQuestion = useCallback((q) => {
@@ -176,10 +185,10 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="app-content">
-        {page === "chat"      && <ChatPage onNewQuestion={addDynamicQuestion} />}
-        {page === "quiz"      && <QuizBankPage dynamicQuestions={dynamicQuestions} />}
+        {page === "chat" && <ChatPage onNewQuestion={addDynamicQuestion} />}
+        {page === "quiz" && <QuizBankPage dynamicQuestions={dynamicQuestions} />}
         {page === "flashcard" && <FlashcardPage />}
-        {page === "mindmap"   && <MindmapPage />}
+        {page === "mindmap" && <MindmapPage />}
       </div>
       <NavBar activePage={page} onNavigate={setPage} dynamicCount={dynamicQuestions.length} />
     </div>

@@ -1,8 +1,18 @@
 import { useState, useEffect, useRef } from "react";
+import { AlertTriangle, Bot, BookOpen, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
 import TypingIndicator from "./TypingIndicator.jsx";
 
+function cleanSectionText(text) {
+  return text
+    .replaceAll("🔍", "")
+    .replaceAll("📖", "")
+    .replaceAll("🌏", "")
+    .replaceAll("📚", "")
+    .trim();
+}
+
 function renderText(text) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  const parts = cleanSectionText(text).split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
@@ -16,22 +26,25 @@ function renderText(text) {
   });
 }
 
-// Split AI response into theory / practice / source buckets
 function parseIntoSections(text) {
-  if (!text.includes("🔍") && !text.includes("🌏")) return null;
-  const buckets = { theory: [], practice: [], source: [] };
+  if (!text.includes("🔍") && !text.includes("🌏") && !text.includes("📖")) return null;
+  const buckets = { concept: [], theory: [], practice: [], source: [] };
   let current = null;
+
   for (const line of text.split("\n")) {
-    if (line.includes("🔍") || line.includes("📖")) current = "theory";
+    if (line.includes("🔍")) current = "concept";
+    else if (line.includes("📖")) current = "theory";
     else if (line.includes("🌏")) current = "practice";
     else if (line.includes("📚")) current = "source";
     if (current) buckets[current].push(line);
   }
-  const t = buckets.theory.join("\n").trim();
-  const p = buckets.practice.join("\n").trim();
-  const s = buckets.source.join("\n").trim();
-  if (!t && !p) return null;
-  return { theory: t, practice: p, source: s };
+
+  const concept = buckets.concept.join("\n").trim();
+  const theory = buckets.theory.join("\n").trim();
+  const practice = buckets.practice.join("\n").trim();
+  const source = buckets.source.join("\n").trim();
+  if (!concept && !theory && !practice) return null;
+  return { concept, theory, practice, source };
 }
 
 function AccordionSection({ title, content, defaultOpen = true }) {
@@ -40,7 +53,7 @@ function AccordionSection({ title, content, defaultOpen = true }) {
     <div className="acc-section">
       <button className="acc-header" onClick={() => setOpen((o) => !o)}>
         <span className="acc-header-title">{title}</span>
-        <span className="acc-chevron">{open ? "▲" : "▼"}</span>
+        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
       {open && <div className="acc-body">{renderText(content)}</div>}
     </div>
@@ -50,19 +63,23 @@ function AccordionSection({ title, content, defaultOpen = true }) {
 function RagSourcePanel({ chunks, texts }) {
   const [open, setOpen] = useState(false);
   const badgeCls =
-    chunks >= 3 ? "rag-chip rag-chip--green"
-    : chunks >= 1 ? "rag-chip rag-chip--yellow"
-    : "rag-chip";
+    chunks >= 3
+      ? "rag-chip rag-chip--green"
+      : chunks >= 1
+        ? "rag-chip rag-chip--yellow"
+        : "rag-chip";
 
   return (
     <div className="rag-source-wrap">
       <button className={badgeCls} onClick={() => setOpen((o) => !o)}>
-        📚 {chunks} đoạn giáo trình · {open ? "ẩn nguồn ▲" : "xem nguồn ▼"}
+        <BookOpen size={15} strokeWidth={2.1} />
+        {chunks} đoạn giáo trình
+        {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
       {open && (
         <div className="rag-source-panel">
           <div className="rag-source-header">
-            Đoạn trích từ giáo trình MLN111 được AI sử dụng để trả lời
+            Đoạn trích giáo trình MLN111 AI đã dùng để trả lời
           </div>
           {texts.map((t, i) => (
             <div key={i} className="rag-source-chunk">
@@ -71,7 +88,7 @@ function RagSourcePanel({ chunks, texts }) {
             </div>
           ))}
           <div className="rag-source-note">
-            So sánh câu trả lời của AI với các đoạn trích trên để kiểm tra độ chính xác.
+            Hãy đối chiếu câu trả lời với các đoạn trích này trước khi dùng cho bài thi.
           </div>
         </div>
       )}
@@ -82,17 +99,15 @@ function RagSourcePanel({ chunks, texts }) {
 function BotMessage({ content, isLastAndStreaming, ragChunks, ragTexts }) {
   const isEmpty = content === "" && isLastAndStreaming;
 
-  // Plain bubble while streaming (avoids jumpy partial parsing)
   if (isLastAndStreaming) {
     return (
       <div className="message-row bot-row">
-        <div className="bot-avatar" aria-hidden="true">M</div>
+        <div className="bot-avatar" aria-hidden="true">
+          <Bot size={18} strokeWidth={2.2} />
+        </div>
         <div className="bot-message-body">
           <div className="bubble bot-bubble">
-            {isEmpty
-              ? <span className="stream-placeholder">đang soạn thảo…</span>
-              : renderText(content)
-            }
+            {isEmpty ? <span className="stream-placeholder">Đang soạn câu trả lời...</span> : renderText(content)}
           </div>
         </div>
       </div>
@@ -103,28 +118,32 @@ function BotMessage({ content, isLastAndStreaming, ragChunks, ragTexts }) {
 
   return (
     <div className="message-row bot-row">
-      <div className="bot-avatar" aria-hidden="true">M</div>
+      <div className="bot-avatar" aria-hidden="true">
+        <Bot size={18} strokeWidth={2.2} />
+      </div>
       <div className="bot-message-body">
         {sections ? (
           <div className="msg-accordion">
+            {sections.concept && (
+              <AccordionSection title="Khái niệm cốt lõi" content={sections.concept} defaultOpen={true} />
+            )}
             {sections.theory && (
-              <AccordionSection title="LÝ THUYẾT" content={sections.theory} defaultOpen={true} />
+              <AccordionSection title="Góc nhìn Marx-Lenin" content={sections.theory} defaultOpen={true} />
             )}
             {sections.practice && (
-              <AccordionSection title="THỰC HÀNH" content={sections.practice} defaultOpen={true} />
+              <AccordionSection title="Ví dụ thực tiễn" content={sections.practice} defaultOpen={true} />
             )}
-            {sections.source && (
-              <div className="acc-source">{renderText(sections.source)}</div>
-            )}
+            {sections.source && <div className="acc-source">{renderText(sections.source)}</div>}
           </div>
         ) : (
           <div className="bubble bot-bubble">{renderText(content)}</div>
         )}
-        {ragChunks > 0 && (
-          <RagSourcePanel chunks={ragChunks} texts={ragTexts ?? []} />
-        )}
+        {ragChunks > 0 && <RagSourcePanel chunks={ragChunks} texts={ragTexts ?? []} />}
         {ragChunks === 0 && content && !isLastAndStreaming && (
-          <div className="rag-chip rag-chip--none">⚠ Không tìm thấy đoạn giáo trình liên quan — câu trả lời dựa trên kiến thức chung</div>
+          <div className="rag-chip rag-chip--none">
+            <AlertTriangle size={14} strokeWidth={2.1} />
+            Chưa tìm thấy đoạn giáo trình liên quan, câu trả lời dựa trên kiến thức chung
+          </div>
         )}
       </div>
     </div>
@@ -155,18 +174,12 @@ export default function MessageList({ messages, isStreaming }) {
       {messages.length === 0 && !isStreaming && (
         <div className="empty-state">
           <div className="empty-emblem" aria-hidden="true">
-            <div className="empty-emblem-inner">
-              <span className="empty-emblem-letter">M</span>
-              <span className="empty-emblem-star">★ ★ ★</span>
-            </div>
+            <GraduationCap size={42} strokeWidth={1.9} />
           </div>
-          <div className="empty-rule" />
-          <p className="empty-title">Chào đồng chí sinh viên!</p>
-          <div className="empty-rule-thin" />
+          <p className="empty-kicker">Bắt đầu buổi học</p>
+          <h1 className="empty-title">Mở rộng thế giới quan của bạn qua từng câu hỏi.</h1>
           <p className="empty-hint">
-            Tôi là <em>Hỏi Marx</em> — trợ lý học tập MLN111 của bạn.
-            Hỏi bất kỳ điều gì về triết học Marx-Lenin, hoặc nhấn{" "}
-            <strong>Quiz</strong> để ôn thi ngay.
+            Bạn có thể hỏi định nghĩa, so sánh khái niệm, xin ví dụ đời sống, hoặc gõ "quiz" để luyện nhanh.
           </p>
         </div>
       )}
