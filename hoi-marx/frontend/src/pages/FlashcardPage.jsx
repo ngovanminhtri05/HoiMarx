@@ -20,7 +20,10 @@ function flattenMindmap(node) {
   return cards;
 }
 
-const ALL_CARDS = flattenMindmap(mindmapData);
+const ALL_CARDS = flattenMindmap(mindmapData).map((card, index) => ({
+  ...card,
+  imageSrc: index < 5 ? `/flashcards/${index + 1}.jpg` : null,
+}));
 
 const FILTERS = [
   { id: "all", label: "Tất cả" },
@@ -143,6 +146,17 @@ export default function FlashcardPage() {
                   <div className="fc-front-sub" style={{ color: card.textColor }}>
                     {card.sublabel}
                   </div>
+                )}
+                {card.imageSrc && (
+                  <img
+                    className="fc-front-image"
+                    src={card.imageSrc}
+                    alt={`Minh họa ${card.label}`}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
                 )}
                 <div className="fc-front-term" style={{ color: card.textColor }}>
                   {card.label}

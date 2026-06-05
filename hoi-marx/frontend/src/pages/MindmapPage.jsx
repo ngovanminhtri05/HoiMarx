@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from "react";
-import { Maximize2, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { Expand, Maximize2, Minimize2, Minus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { mindmapData } from "../data/mindmapData.js";
 
 const SLOT_H = 56;
@@ -182,7 +182,18 @@ export default function MindmapPage() {
   const [collapsed, setCollapsed] = useState(INITIAL_COLLAPSED);
   const [zoom, setZoom] = useState(1);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const pageRef = useRef(null);
   const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === pageRef.current);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   const toggle = useCallback((id) => {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -206,8 +217,22 @@ export default function MindmapPage() {
     setCollapsed(c);
   };
 
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === pageRef.current) {
+        await document.exitFullscreen();
+      } else {
+        await pageRef.current?.requestFullscreen();
+      }
+    } catch {
+      setIsFullscreen(document.fullscreenElement === pageRef.current);
+    }
+  };
+
+  const FullscreenIcon = isFullscreen ? Minimize2 : Maximize2;
+
   return (
-    <div className="mm-page">
+    <div className="mm-page" ref={pageRef}>
       <div className="mm-toolbar">
         <div className="mm-toolbar-left">
           <p className="page-kicker">Bản đồ khái niệm</p>
@@ -216,7 +241,7 @@ export default function MindmapPage() {
         </div>
         <div className="mm-toolbar-right">
           <button className="mm-btn" onClick={expandAll}>
-            <Maximize2 size={16} strokeWidth={2.2} />
+            <Expand size={16} strokeWidth={2.2} />
             Mở tất cả
           </button>
           <button className="mm-btn" onClick={collapseAll}>
@@ -228,6 +253,15 @@ export default function MindmapPage() {
           </button>
           <button className="mm-btn mm-icon-btn" onClick={() => setZoom((z) => Math.max(0.4, z - 0.15))} title="Thu nhỏ">
             <ZoomOut size={17} strokeWidth={2.2} />
+          </button>
+          <button
+            className="mm-btn"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Thoát toàn màn hình Mindmap" : "Xem Mindmap toàn màn hình"}
+            type="button"
+          >
+            <FullscreenIcon size={16} strokeWidth={2.2} />
+            {isFullscreen ? "Thoát" : "Toàn màn hình"}
           </button>
           <span className="mm-zoom-label">{Math.round(zoom * 100)}%</span>
         </div>

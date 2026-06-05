@@ -980,10 +980,20 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+.fc-front-image {
+  width: min(220px, 48vw);
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 18px 34px rgba(23, 33, 43, 0.22);
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .fc-front-term {
   max-width: 12ch;
   text-align: center;
-  font-size: clamp(2rem, 7vw, 4rem);
+  font-size: clamp(1.7rem, 5.8vw, 3.45rem);
   line-height: 1;
   font-weight: 850;
   text-wrap: balance;
@@ -1087,6 +1097,28 @@ textarea:focus-visible {
 
 .mm-page {
   background: var(--canvas);
+}
+
+.mm-page:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  padding: 18px;
+  background: var(--canvas);
+}
+
+.mm-page:fullscreen .mm-toolbar,
+.mm-page:fullscreen .mm-legend,
+.mm-page:fullscreen .mm-def-panel,
+.mm-page:fullscreen .mm-canvas-wrap {
+  width: 100%;
+}
+
+.mm-page:fullscreen .mm-toolbar {
+  margin-top: 0;
+}
+
+.mm-page:fullscreen .mm-canvas-wrap {
+  margin-bottom: 0;
 }
 
 .mm-toolbar {
