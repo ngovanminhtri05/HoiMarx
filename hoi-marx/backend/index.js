@@ -61,16 +61,32 @@ function makeChunkPreview(text, maxChars = 480) {
   let excerpt = text.trim();
 
   // Step 1 — skip leading fragment if the chunk starts mid-sentence.
-  // Heuristic: if there's a sentence-end marker within the first 120 chars
-  // and the very first token looks like a fragment (no uppercase start AND
-  // the fragment is short, e.g. "quát," or "nghĩa,"), trim it.
-  const earlyEnd = excerpt.search(/[.!?]\s+/);
-  if (earlyEnd > 0 && earlyEnd < 120) {
-    const fragment = excerpt.slice(0, earlyEnd).trim();
-    const wordCount = fragment.split(/\s+/).length;
-    // Treat as fragment if ≤ 6 words (clearly a tail of a previous sentence)
-    if (wordCount <= 6) {
-      excerpt = excerpt.slice(earlyEnd).replace(/^[.!?]\s*/, "").trim();
+  //
+  // Primary signal: if the first character is a lowercase letter (both ASCII and
+  // Unicode/Vietnamese), the chunk is definitely mid-sentence — textbook sentences
+  // always start uppercase. Find the first sentence boundary and trim to it.
+  //
+  // Fallback: even if first char is uppercase, trim short fragments (≤6 words)
+  // that appear before the first sentence-end within 120 chars.
+  const firstChar = excerpt.charAt(0);
+  const startsLowercase =
+    firstChar === firstChar.toLowerCase() && firstChar !== firstChar.toUpperCase();
+
+  if (startsLowercase) {
+    // Search up to 600 chars for first ". " / ".\n" / "! " / "? "
+    const boundary = excerpt.slice(0, 600).search(/[.!?]['")»\]]?\s/);
+    if (boundary >= 0) {
+      // Skip past the punctuation and any trailing whitespace
+      excerpt = excerpt.slice(boundary + 1).trimStart();
+    }
+  } else {
+    // Short-fragment fallback (≤6 words before early sentence end)
+    const earlyEnd = excerpt.search(/[.!?]\s+/);
+    if (earlyEnd > 0 && earlyEnd < 120) {
+      const fragment = excerpt.slice(0, earlyEnd).trim();
+      if (fragment.split(/\s+/).length <= 6) {
+        excerpt = excerpt.slice(earlyEnd).replace(/^[.!?]\s*/, "").trim();
+      }
     }
   }
 
