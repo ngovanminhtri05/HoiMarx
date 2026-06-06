@@ -153,7 +153,12 @@ export async function loadKB() {
   console.log("[KB] Không tìm thấy giáo trình — RAG tắt");
 }
 
-const DEFINITION_TRIGGERS = ["là gì", "định nghĩa", "khái niệm", "ý nghĩa", "bản chất", "hiểu như thế nào", "giải thích"];
+const DEFINITION_TRIGGERS = [
+  "là gì", "định nghĩa", "khái niệm", "ý nghĩa", "bản chất", "hiểu như thế nào", "giải thích",
+  // fill-in-the-blank patterns — same scoring boost helps find factual chunks
+  "quan hệ gì", "hình thành nên gì", "tạo ra gì", "gọi là gì", "là cái gì",
+  "là lực lượng gì", "là yếu tố gì", "là điều gì",
+];
 const ENUMERATION_TRIGGERS = ["mấy", "bao nhiêu", "có những", "liệt kê", "kể tên", "những loại", "các loại", "những gì", "gồm những", "bao gồm"];
 
 // Vietnamese synonym pairs — when query uses word A, also search for word B.
@@ -168,6 +173,13 @@ const SYNONYMS = [
   ["ý nghĩa", "tầm quan trọng"],
   ["tác động", "ảnh hưởng"],
   ["phát triển", "tiến bộ"],
+  // causal / formative relationships
+  ["cơ sở", "nền tảng"],
+  ["cơ sở", "tiền đề"],
+  ["hình thành", "tạo ra"],
+  ["hình thành", "thiết lập"],
+  ["sản xuất", "lao động"],
+  ["quan hệ sản xuất", "quan hệ giữa người"],
 ];
 
 function expandWithSynonyms(query) {
