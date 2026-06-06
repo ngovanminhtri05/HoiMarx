@@ -106,16 +106,25 @@ function makeChunkPreview(text, maxChars = 480) {
   return slice.trim() + "…";
 }
 
-function buildSystemPrompt(kbChunks) {
-  if (!kbChunks.length) return SYSTEM_PROMPT;
-  const context = kbChunks.join("\n\n---\n\n");
-  return `${SYSTEM_PROMPT}
+// Detects fill-in-the-blank patterns: "quan hệ gì", "hình thành nên gì", etc.
+const FILL_IN_BLANK_RE =
+  /(?:quan hệ|mối quan hệ|loại|hình thức|điều|yếu tố|nhân tố|giai cấp|lực lượng|cái|thứ)\s+gì\b|hình thành\s+(?:nên\s+)?gì|tạo ra\s+(?:gì|điều gì)|gọi\s+là\s+gì|đó\s+là\s+gì|đây\s+là\s+gì|là\s+(?:gì|cái gì)\s*\?/i;
 
---- ĐOẠN TRÍCH TỪ GIÁO TRÌNH MLN111 (NXB CTQG 2021) ---
-${context}
---- HẾT ĐOẠN TRÍCH ---
+function buildSystemPrompt(kbChunks, lastUserMsg = "") {
+  const contextSection = kbChunks.length
+    ? `\n\n--- ĐOẠN TRÍCH TỪ GIÁO TRÌNH MLN111 (NXB CTQG 2021) ---\n${kbChunks.join("\n\n---\n\n")}\n--- HẾT ĐOẠN TRÍCH ---\n\nƯu tiên dùng nội dung trích dẫn trên để trả lời chính xác. Nếu đoạn trích không đủ, bổ sung từ kiến thức chung nhưng ghi chú rõ phần nào là kiến thức chung.`
+    : "";
 
-Ưu tiên dùng nội dung trích dẫn trên để trả lời chính xác. Nếu đoạn trích không đủ, bổ sung từ kiến thức chung nhưng ghi chú rõ phần nào là kiến thức chung.`;
+  const fillInHint = FILL_IN_BLANK_RE.test(lastUserMsg)
+    ? `\n\n⚠️ LỆNH BẮT BUỘC — ghi đè mọi quy tắc trên:
+Câu hỏi người dùng vừa gửi là dạng ĐIỀN KHUYẾT (hỏi tên một khái niệm).
+Phần 🔍 PHẢI mở đầu bằng đúng cấu trúc sau, không được bỏ:
+  "[chủ ngữ từ câu hỏi] là **[TÊN KHÁI NIỆM]**."
+Ví dụ hợp lệ duy nhất: "Đó là **quan hệ sản xuất**."
+SAU ĐÓ mới giải thích thêm. KHÔNG được chỉ giải thích mà không nêu thẳng tên.`
+    : "";
+
+  return `${SYSTEM_PROMPT}${contextSection}${fillInHint}`;
 }
 
 app.get("/api/health", (_req, res) => {
@@ -146,7 +155,7 @@ app.post("/api/chat", async (req, res) => {
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      systemInstruction: buildSystemPrompt(kbChunks),
+      systemInstruction: buildSystemPrompt(kbChunks, lastUserMsg),
     });
 
     // Convert Anthropic-style messages → Gemini format
