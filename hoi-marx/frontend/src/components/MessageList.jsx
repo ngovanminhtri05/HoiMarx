@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { AlertTriangle, Bot, BookOpen, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, GraduationCap } from "lucide-react";
 import TypingIndicator from "./TypingIndicator.jsx";
 
 function cleanSectionText(text) {
@@ -60,43 +60,7 @@ function AccordionSection({ title, content, defaultOpen = true }) {
   );
 }
 
-function RagSourcePanel({ chunks, texts }) {
-  const [open, setOpen] = useState(false);
-  const badgeCls =
-    chunks >= 3
-      ? "rag-chip rag-chip--green"
-      : chunks >= 1
-        ? "rag-chip rag-chip--yellow"
-        : "rag-chip";
-
-  return (
-    <div className="rag-source-wrap">
-      <button className={badgeCls} onClick={() => setOpen((o) => !o)}>
-        <BookOpen size={15} strokeWidth={2.1} />
-        {chunks} đoạn giáo trình
-        {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-      </button>
-      {open && (
-        <div className="rag-source-panel">
-          <div className="rag-source-header">
-            Đoạn trích giáo trình MLN111 AI đã dùng để trả lời
-          </div>
-          {texts.map((t, i) => (
-            <div key={i} className="rag-source-chunk">
-              <span className="rag-chunk-num">#{i + 1}</span>
-              <p className="rag-chunk-text">{t}</p>
-            </div>
-          ))}
-          <div className="rag-source-note">
-            Hãy đối chiếu câu trả lời với các đoạn trích này trước khi dùng cho bài thi.
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BotMessage({ content, isLastAndStreaming, ragChunks, ragTexts }) {
+function BotMessage({ content, isLastAndStreaming }) {
   const isEmpty = content === "" && isLastAndStreaming;
 
   if (isLastAndStreaming) {
@@ -137,13 +101,6 @@ function BotMessage({ content, isLastAndStreaming, ragChunks, ragTexts }) {
           </div>
         ) : (
           <div className="bubble bot-bubble">{renderText(content)}</div>
-        )}
-        {ragChunks > 0 && <RagSourcePanel chunks={ragChunks} texts={ragTexts ?? []} />}
-        {ragChunks === 0 && content && !isLastAndStreaming && (
-          <div className="rag-chip rag-chip--none">
-            <AlertTriangle size={14} strokeWidth={2.1} />
-            Chưa tìm thấy đoạn giáo trình liên quan, câu trả lời dựa trên kiến thức chung
-          </div>
         )}
       </div>
     </div>
@@ -194,8 +151,6 @@ export default function MessageList({ messages, isStreaming }) {
             key={msg.id}
             content={msg.content}
             isLastAndStreaming={isLastMsg && isStreaming}
-            ragChunks={msg.ragChunks ?? 0}
-            ragTexts={msg.ragTexts ?? []}
           />
         );
       })}
