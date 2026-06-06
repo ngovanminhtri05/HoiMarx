@@ -1155,6 +1155,22 @@ textarea:focus-visible {
   min-height: 0;
 }
 
+/* Wake-up banner */
+.wakeup-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--warning-wash);
+  color: var(--warning);
+  border-bottom: 1px solid rgba(183, 121, 31, 0.25);
+  text-align: center;
+  padding: 9px 16px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  animation: fade-up 0.3s ease;
+}
+
 .mm-toolbar {
   width: min(1120px, calc(100% - 32px));
   margin: 18px auto 10px;

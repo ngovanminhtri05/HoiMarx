@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Header from "./components/Header.jsx";
 import MessageList from "./components/MessageList.jsx";
 import InputBar from "./components/InputBar.jsx";
@@ -8,6 +8,35 @@ import MindmapPage from "./pages/MindmapPage.jsx";
 import FlashcardPage from "./pages/FlashcardPage.jsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// Ping backend on load so Render wakes up before user sends first message
+function useBackendWakeup() {
+  const [ready, setReady] = useState(false);
+  const [waking, setWaking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function ping() {
+      try {
+        const res = await fetch(`${API_URL}/api/health`, { signal: AbortSignal.timeout(5000) });
+        if (!cancelled && res.ok) { setReady(true); return; }
+      } catch {}
+      // Backend is sleeping — show waking indicator then retry
+      if (!cancelled) setWaking(true);
+      for (let i = 0; i < 10; i++) {
+        await new Promise((r) => setTimeout(r, 5000));
+        try {
+          const res = await fetch(`${API_URL}/api/health`, { signal: AbortSignal.timeout(8000) });
+          if (!cancelled && res.ok) { setReady(true); setWaking(false); return; }
+        } catch {}
+      }
+    }
+    ping();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { ready, waking };
+}
 
 function ChatPage({ onNewQuestion }) {
   const [messages, setMessages] = useState([]);
@@ -165,6 +194,7 @@ function ChatPage({ onNewQuestion }) {
 
 export default function App() {
   const [page, setPage] = useState("chat");
+  const { ready, waking } = useBackendWakeup();
 
   const [dynamicQuestions, setDynamicQuestions] = useState(() => {
     try {
@@ -184,6 +214,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {waking && (
+        <div className="wakeup-banner">
+          ⏳ Đang khởi động server… vui lòng đợi ~30 giây
+        </div>
+      )}
       <div className="app-content">
         {page === "chat" && <ChatPage onNewQuestion={addDynamicQuestion} />}
         {page === "quiz" && <QuizBankPage dynamicQuestions={dynamicQuestions} />}
